@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}Services - ServiceAdmin{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1>Services de Reparación</h1>
+        <p>Listado de todos los services registrados</p>
+    </div>
+    <a href="{{ url_for('agregar_service_page') }}" class="btn btn-primary">
+        ➕ Nuevo Servicio
+    </a>
+</div>
+
+<!-- Filtros -->
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+        <a href="{{ url_for('services_page') }}"
+            class="btn btn-sm {% if not request.args.get('estado') %}btn-primary{% else %}btn-secondary{% endif %}">
+            Todos
+        </a>
+        <a href="{{ url_for('services_page') }}?estado=pendiente"
+            class="btn btn-sm {% if request.args.get('estado') == 'pendiente' %}btn-primary{% else %}btn-secondary{% endif %}">
+            Pendientes
+        </a>
+        <a href="{{ url_for('services_page') }}?estado=revisado"
+            class="btn btn-sm {% if request.args.get('estado') == 'revisado' %}btn-primary{% else %}btn-secondary{% endif %}">
+            Revisados
+        </a>
+        <a href="{{ url_for('services_page') }}?estado=reparado"
+            class="btn btn-sm {% if request.args.get('estado') == 'reparado' %}btn-primary{% else %}btn-secondary{% endif %}">
+            Reparados
+        </a>
+        <a href="{{ url_for('services_page') }}?estado=entregado"
+            class="btn btn-sm {% if request.args.get('estado') == 'entregado' %}btn-primary{% else %}btn-secondary{% endif %}">
+            Entregados
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Cliente</th>
+                    <th>Producto</th>
+                    <th>Falla</th>
+                    <th>Fecha</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for service in services %}
+                <tr>
+                    <td>#{{ service.codService }}</td>
+                    <td>{{ service.cliente.nombre }}</td>
+                    <td>
+                        <strong>{{ service.nomProducto }}</strong>
+                        {% if service.modelo %}
+                        <br><small style="color: var(--gray-400);">{{ service.modelo }}</small>
+                        {% endif %}
+                    </td>
+                    <td>{{ service.descripFalla or '-' }}</td>
+                    <td>{{ service.fecha.strftime('%d/%m/%Y') if service.fecha else '-' }}</td>
+                    <td>
+                        <span class="badge {{ service.estado_badge_class }}">{{ service.estado }}</span>
+                    </td>
+                    <td class="actions">
+                        <a href="{{ url_for('editar_service_page', cod_service=service.codService) }}"
+                            class="btn btn-secondary btn-sm">
+                            ✏️ Editar
+                        </a>
+                        {% if not service.entregado %}
+                        {% if not service.revisado %}
+                        <button class="btn btn-warning btn-sm" onclick="marcarRevisado({{ service.codService }})">
+                            🔍 Revisar
+                        </button>
+                        {% elif not service.reparado %}
+                        <button class="btn btn-info btn-sm" onclick="marcarReparado({{ service.codService }})"
+                            style="background: var(--info); color: white;">
+                            🔧 Reparar
+                        </button>
+                        {% else %}
+                        <button class="btn btn-success btn-sm" onclick="marcarEntregado({{ service.codService }})">
+                            ✅ Entregar
+                        </button>
+                        {% endif %}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="empty-state">
+                        <div class="empty-state-icon">🔧</div>
+                        <p>No hay servicios registrados</p>
+                        <a href="{{ url_for('agregar_service_page') }}" class="btn btn-primary"
+                            style="margin-top: 1rem;">
+                            Agregar primer servicio
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    async function marcarRevisado(id) {
+        if (!confirm('¿Marcar este servicio como revisado?')) return;
+
+        try {
+            const response = await fetch(`/api/services/${id}/revisar`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showAlert('Servicio marcado como revisado');
+                location.reload();
+            } else {
+                showAlert(result.message, 'danger');
+            }
+        } catch (error) {
+            showAlert('Error al actualizar servicio', 'danger');
+        }
+    }
+
+    async function marcarReparado(id) {
+        if (!confirm('¿Marcar este servicio como reparado?')) return;
+
+        try {
+            const response = await fetch(`/api/services/${id}/reparar`, {
+                method: 'POST'
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showAlert('Servicio marcado como reparado');
+                location.reload();
+            } else {
+                showAlert(result.message, 'danger');
+            }
+        } catch (error) {
+            showAlert('Error al actualizar servicio', 'danger');
+        }
+    }
+
+    async function marcarEntregado(id) {
+        if (!confirm('¿Marcar este servicio como entregado?')) return;
+
+        try {
+            const response = await fetch(`/api/services/${id}/entregar`, {
+                method: 'POST'
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showAlert('Servicio marcado como entregado');
+                location.reload();
+            } else {
+                showAlert(result.message, 'danger');
+            }
+        } catch (error) {
+            showAlert('Error al actualizar servicio', 'danger');
+        }
+    }
+</script>
+{% endblock %}

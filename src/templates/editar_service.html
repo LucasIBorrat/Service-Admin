@@ -1,0 +1,629 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Service #{{ service.codService }} - ServiceAdmin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Editar Service #{{ service.codService }}</h1>
+    <p>{{ service.nomProducto }} - {{ service.cliente.nombre }}</p>
+</div>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;">
+    <!-- Formulario principal -->
+    <div>
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <div class="card-header">
+                <span class="card-title">Información del Service</span>
+                <span class="badge {{ service.estado_badge_class }}">{{ service.estado }}</span>
+            </div>
+
+            <form id="formService">
+                <div class="form-group">
+                    <label class="form-label">Cliente</label>
+                    <input type="text" class="form-control" value="{{ service.cliente.nombre }}" disabled>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label class="form-label" for="nomProducto">Nombre del Producto *</label>
+                        <input type="text" id="nomProducto" name="nomProducto" class="form-control"
+                            value="{{ service.nomProducto }}" required {% if service.entregado %}disabled{% endif %}>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="modelo">Modelo</label>
+                        <input type="text" id="modelo" name="modelo" class="form-control"
+                            value="{{ service.modelo or '' }}" {% if service.entregado %}disabled{% endif %}>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="descrip">Descripción del Producto</label>
+                    <textarea id="descrip" name="descrip" class="form-control" {% if service.entregado %}disabled{%
+                        endif %}>{{ service.descrip or '' }}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="descripFalla">Descripción de la Falla</label>
+                    <textarea id="descripFalla" name="descripFalla" class="form-control" {% if service.entregado
+                        %}disabled{% endif %}>{{ service.descripFalla or '' }}</textarea>
+                </div>
+
+                {% if not service.entregado %}
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1rem;">
+                    <a href="{{ url_for('services_page') }}" class="btn btn-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                </div>
+                {% endif %}
+            </form>
+        </div>
+
+        <!-- Sección de Repuestos -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">🔩 Repuestos</span>
+                <span class="badge badge-info" id="totalRepuestos">${{ service.total_costo_repuestos }}</span>
+            </div>
+
+            <div id="listaRepuestos" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                {% for repuesto in service.repuestos %}
+                <div class="repuesto-item" data-id="{{ repuesto.id }}"
+                    style="display: flex; gap: 1rem; align-items: center; padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                    <input type="text" class="form-control" value="{{ repuesto.nombre }}"
+                        placeholder="Nombre del repuesto" style="flex: 2;"
+                        onchange="actualizarRepuesto({{ repuesto.id }}, this.value, null)" {% if service.entregado
+                        %}disabled{% endif %}>
+                    <input type="number" class="form-control" value="{{ repuesto.costo }}" placeholder="Costo" min="0"
+                        style="flex: 1;" onchange="actualizarRepuesto({{ repuesto.id }}, null, this.value)" {% if
+                        service.entregado %}disabled{% endif %}>
+                    {% if not service.entregado %}
+                    <button type="button" class="btn btn-danger btn-sm" onclick="eliminarRepuesto({{ repuesto.id }})">
+                        🗑️
+                    </button>
+                    {% endif %}
+                </div>
+                {% else %}
+                <p style="color: var(--gray-400); text-align: center;" id="sinRepuestos">
+                    No hay repuestos agregados
+                </p>
+                {% endfor %}
+            </div>
+
+            {% if not service.entregado %}
+            <hr style="border-color: rgba(255,255,255,0.1); margin: 1rem 0;">
+
+            <div style="display: flex; gap: 1rem; align-items: flex-end;">
+                <div style="flex: 2;">
+                    <label class="form-label" for="nuevoRepuestoNombre">Nuevo Repuesto</label>
+                    <input type="text" id="nuevoRepuestoNombre" class="form-control" placeholder="Nombre del repuesto">
+                </div>
+                <div style="flex: 1;">
+                    <label class="form-label" for="nuevoRepuestoCosto">Costo ($)</label>
+                    <input type="number" id="nuevoRepuestoCosto" class="form-control" placeholder="0" min="0" value="0">
+                </div>
+                <button type="button" class="btn btn-success" onclick="agregarRepuesto()">
+                    ➕ Agregar
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Panel lateral -->
+    <div>
+        <!-- Estado del servicio -->
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <div class="card-header">
+                <span class="card-title">📋 Estado</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>Revisado</span>
+                    <span class="badge {% if service.revisado %}badge-success{% else %}badge-secondary{% endif %}">
+                        {{ '✓' if service.revisado else '✗' }}
+                    </span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>Reparado</span>
+                    <span class="badge {% if service.reparado %}badge-success{% else %}badge-secondary{% endif %}">
+                        {{ '✓' if service.reparado else '✗' }}
+                    </span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>Entregado</span>
+                    <span class="badge {% if service.entregado %}badge-success{% else %}badge-secondary{% endif %}">
+                        {{ '✓' if service.entregado else '✗' }}
+                    </span>
+                </div>
+            </div>
+
+            {% if not service.entregado %}
+            <hr style="border-color: rgba(255,255,255,0.1); margin: 1rem 0;">
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                {% if not service.revisado %}
+                <button class="btn btn-warning btn-sm" onclick="marcarRevisado()">
+                    🔍 Marcar Revisado
+                </button>
+                {% elif not service.reparado %}
+                <button class="btn btn-sm" onclick="marcarReparado()" style="background: var(--info); color: white;">
+                    🔧 Marcar Reparado
+                </button>
+                {% else %}
+                <button class="btn btn-success btn-sm" onclick="marcarEntregado()">
+                    ✅ Marcar Entregado
+                </button>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Presupuesto -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">💰 Presupuesto</span>
+            </div>
+            {% if service.presupuesto %}
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <!-- Detalle de repuestos -->
+                <div style="font-size: 0.85rem; color: var(--gray-400); margin-bottom: 0.5rem;">
+                    Repuestos:
+                </div>
+                {% for repuesto in service.repuestos %}
+                <div style="display: flex; justify-content: space-between; padding-left: 0.5rem; font-size: 0.9rem;">
+                    <span style="color: var(--gray-300);">• {{ repuesto.nombre }}</span>
+                    <span>${{ repuesto.costo }}</span>
+                </div>
+                {% endfor %}
+                {% if service.repuestos|length == 0 %}
+                <div style="padding-left: 0.5rem; color: var(--gray-500); font-size: 0.85rem;">
+                    Sin repuestos registrados
+                </div>
+                {% endif %}
+
+                <div
+                    style="display: flex; justify-content: space-between; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <span>Subtotal Repuestos:</span>
+                    <strong>${{ service.total_costo_repuestos }}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>Mano de obra:</span>
+                    <strong>${{ service.presupuesto.manoDeObra }}</strong>
+                </div>
+                <hr style="border-color: rgba(255,255,255,0.1); margin: 0.5rem 0;">
+                <div style="display: flex; justify-content: space-between;">
+                    <span>TOTAL:</span>
+                    <strong style="color: var(--success); font-size: 1.25rem;">
+                        ${{ service.total_costo_repuestos + service.presupuesto.manoDeObra }}
+                    </strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
+                    <span>Estado:</span>
+                    <span
+                        class="badge {% if service.presupuesto.aceptado %}badge-success{% else %}badge-warning{% endif %}">
+                        {{ 'Aceptado' if service.presupuesto.aceptado else 'Pendiente' }}
+                    </span>
+                </div>
+                {% if not service.presupuesto.aceptado %}
+                <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                    <button class="btn btn-success btn-sm" onclick="aceptarPresupuesto()">
+                        ✓ Aceptar
+                    </button>
+                    {% if not service.entregado %}
+                    <button class="btn btn-secondary btn-sm" onclick="openModal('modalEditarPresupuesto')">
+                        ✏️ Modificar
+                    </button>
+                    {% endif %}
+                </div>
+                {% else %}
+                {% if not service.entregado %}
+                <button class="btn btn-secondary btn-sm" onclick="openModal('modalEditarPresupuesto')"
+                    style="margin-top: 0.5rem;">
+                    ✏️ Modificar Presupuesto
+                </button>
+                {% endif %}
+                {% endif %}
+            </div>
+            {% else %}
+            <p style="color: var(--gray-400); margin-bottom: 1rem;">No hay presupuesto generado</p>
+            {% if service.revisado %}
+            <button class="btn btn-primary btn-sm" onclick="openModal('modalPresupuesto')">
+                ➕ Generar Presupuesto
+            </button>
+            {% else %}
+            <p style="color: var(--warning); font-size: 0.85rem;">
+                ⚠️ Revise el servicio primero
+            </p>
+            {% endif %}
+            {% endif %}
+        </div>
+
+        <!-- Eliminar -->
+        <div class="card" style="margin-top: 1.5rem; border-color: var(--danger);">
+            <div class="card-header">
+                <span class="card-title" style="color: var(--danger);">⚠️ Zona de peligro</span>
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="eliminarService()">
+                🗑️ Eliminar Service
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Presupuesto -->
+<div id="modalPresupuesto" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Generar Presupuesto</h3>
+            <button class="modal-close" onclick="closeModal('modalPresupuesto')">&times;</button>
+        </div>
+        <form id="formPresupuesto">
+            <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span>Total Repuestos:</span>
+                    <strong id="presupuestoTotalRepuestos">${{ service.total_costo_repuestos }}</strong>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="manoDeObra">Mano de Obra ($)</label>
+                <input type="number" id="manoDeObra" name="manoDeObra" class="form-control" value="0" min="0">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary"
+                    onclick="closeModal('modalPresupuesto')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Crear Presupuesto</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Editar Presupuesto -->
+<div id="modalEditarPresupuesto" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Modificar Presupuesto</h3>
+            <button class="modal-close" onclick="closeModal('modalEditarPresupuesto')">&times;</button>
+        </div>
+        <form id="formEditarPresupuesto">
+            <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                <div style="display: flex; justify-content: space-between;">
+                    <span>Total Repuestos (actualizado):</span>
+                    <strong>${{ service.total_costo_repuestos }}</strong>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="editManoDeObra">Mano de Obra ($)</label>
+                <input type="number" id="editManoDeObra" name="manoDeObra" class="form-control"
+                    value="{{ service.presupuesto.manoDeObra if service.presupuesto else 0 }}" min="0">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary"
+                    onclick="closeModal('modalEditarPresupuesto')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const serviceId = {{ service.codService }};
+    let totalRepuestos = {{ service.total_costo_repuestos }};
+    const tienePresupuesto = {{ 'true' if service.presupuesto else 'false' }};
+
+    // Actualizar total de repuestos en la UI
+    function actualizarTotalUI() {
+        document.getElementById('totalRepuestos').textContent = '$' + totalRepuestos;
+        const presupuestoEl = document.getElementById('presupuestoTotalRepuestos');
+        if (presupuestoEl) {
+            presupuestoEl.textContent = '$' + totalRepuestos;
+        }
+    }
+
+    // Sincronizar el costo del presupuesto con el total de repuestos
+    async function sincronizarPresupuesto() {
+        if (!tienePresupuesto) return;
+
+        try {
+            // Obtener presupuesto actual
+            const presResponse = await fetch(`/api/presupuestos/service/${serviceId}`);
+            const presData = await presResponse.json();
+
+            if (presData.success) {
+                // Actualizar el costo de repuestos en el presupuesto
+                await fetch(`/api/presupuestos/${presData.data.codPresupuesto}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        costo: totalRepuestos,
+                        manoDeObra: presData.data.manoDeObra
+                    })
+                });
+            }
+        } catch (error) {
+            console.log('Error al sincronizar presupuesto:', error);
+        }
+    }
+
+    // Guardar información básica del service
+    document.getElementById('formService').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const data = {
+            nomProducto: document.getElementById('nomProducto').value,
+            modelo: document.getElementById('modelo').value,
+            descrip: document.getElementById('descrip').value,
+            descripFalla: document.getElementById('descripFalla').value
+        };
+
+        try {
+            const response = await fetch(`/api/services/${serviceId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showAlert('Service actualizado');
+            } else {
+                showAlert(result.message, 'danger');
+            }
+        } catch (error) {
+            showAlert('Error al actualizar service', 'danger');
+        }
+    });
+
+    // Agregar repuesto
+    async function agregarRepuesto() {
+        const nombre = document.getElementById('nuevoRepuestoNombre').value.trim();
+        const costo = parseInt(document.getElementById('nuevoRepuestoCosto').value) || 0;
+
+        if (!nombre) {
+            showAlert('Ingrese el nombre del repuesto', 'danger');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/services/${serviceId}/repuestos`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nombre, costo })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showAlert('Repuesto agregado');
+                // Recargar para mostrar el repuesto en presupuesto
+                location.reload();
+            } else {
+                showAlert(result.message, 'danger');
+            }
+        } catch (error) {
+            showAlert('Error al agregar repuesto', 'danger');
+        }
+    }
+
+    // Actualizar repuesto
+    async function actualizarRepuesto(id, nombre, costo) {
+        const data = {};
+        if (nombre !== null) data.nombre = nombre;
+        if (costo !== null) data.costo = parseInt(costo);
+
+        try {
+            const response = await fetch(`/api/services/${serviceId}/repuestos/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                // Recargar para actualizar total
+                if (costo !== null) {
+                    location.reload();
+                }
+            } else {
+                showAlert(result.message, 'danger');
+            }
+        } catch (error) {
+            showAlert('Error al actualizar repuesto', 'danger');
+        }
+    }
+
+    // Eliminar repuesto
+    async function eliminarRepuesto(id) {
+        if (!confirm('¿Eliminar este repuesto?')) return;
+
+        try {
+            const response = await fetch(`/api/services/${serviceId}/repuestos/${id}`, {
+                method: 'DELETE'
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                // Remover de la lista
+                const item = document.querySelector(`.repuesto-item[data-id="${id}"]`);
+                if (item) item.remove();
+
+                // Actualizar total (recargar página para simplificar)
+                location.reload();
+            } else {
+                showAlert(result.message, 'danger');
+            }
+        } catch (error) {
+            showAlert('Error al eliminar repuesto', 'danger');
+        }
+    }
+
+    // Marcar estados
+    async function marcarRevisado() {
+        try {
+            const response = await fetch(`/api/services/${serviceId}/revisar`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showAlert('Service marcado como revisado');
+                location.reload();
+            } else {
+                showAlert(result.message, 'danger');
+            }
+        } catch (error) {
+            showAlert('Error al actualizar', 'danger');
+        }
+    }
+
+    async function marcarReparado() {
+        try {
+            const response = await fetch(`/api/services/${serviceId}/reparar`, {
+                method: 'POST'
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showAlert('Service marcado como reparado');
+                location.reload();
+            } else {
+                showAlert(result.message, 'danger');
+            }
+        } catch (error) {
+            showAlert('Error al actualizar', 'danger');
+        }
+    }
+
+    async function marcarEntregado() {
+        if (!confirm('¿Marcar como entregado? Esta acción no se puede deshacer.')) return;
+
+        try {
+            const response = await fetch(`/api/services/${serviceId}/entregar`, {
+                method: 'POST'
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showAlert('Service marcado como entregado');
+                location.reload();
+            } else {
+                showAlert(result.message, 'danger');
+            }
+        } catch (error) {
+            showAlert('Error al actualizar', 'danger');
+        }
+    }
+
+    // Presupuesto
+    document.getElementById('formPresupuesto').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const data = {
+            codService: serviceId,
+            costo: totalRepuestos,
+            manoDeObra: parseInt(document.getElementById('manoDeObra').value)
+        };
+
+        try {
+            const response = await fetch('/api/presupuestos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showAlert('Presupuesto creado');
+                closeModal('modalPresupuesto');
+                location.reload();
+            } else {
+                showAlert(result.message, 'danger');
+            }
+        } catch (error) {
+            showAlert('Error al crear presupuesto', 'danger');
+        }
+    });
+
+    async function aceptarPresupuesto() {
+        try {
+            const response = await fetch(`/api/presupuestos/service/${serviceId}`);
+            const presData = await response.json();
+
+            if (presData.success) {
+                const acceptResponse = await fetch(`/api/presupuestos/${presData.data.codPresupuesto}/aceptar`, {
+                    method: 'POST'
+                });
+
+                const result = await acceptResponse.json();
+                if (result.success) {
+                    showAlert('Presupuesto aceptado');
+                    location.reload();
+                } else {
+                    showAlert(result.message, 'danger');
+                }
+            }
+        } catch (error) {
+            showAlert('Error al aceptar presupuesto', 'danger');
+        }
+    }
+
+    async function eliminarService() {
+        if (!confirm('¿Está seguro de eliminar este service? Esta acción no se puede deshacer.')) return;
+
+        try {
+            const response = await fetch(`/api/services/${serviceId}`, {
+                method: 'DELETE'
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                window.location.href = '{{ url_for("services_page") }}';
+            } else {
+                showAlert(result.message, 'danger');
+            }
+        } catch (error) {
+            showAlert('Error al eliminar service', 'danger');
+        }
+    }
+
+    // Editar presupuesto existente
+    const formEditarPres = document.getElementById('formEditarPresupuesto');
+    if (formEditarPres) {
+        formEditarPres.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const manoDeObra = parseInt(document.getElementById('editManoDeObra').value) || 0;
+
+            try {
+                // Obtener el presupuesto actual
+                const presResponse = await fetch(`/api/presupuestos/service/${serviceId}`);
+                const presData = await presResponse.json();
+
+                if (presData.success) {
+                    // Solo actualizar mano de obra (repuestos se calculan automáticamente del service)
+                    const updateResponse = await fetch(`/api/presupuestos/${presData.data.codPresupuesto}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            manoDeObra: manoDeObra
+                        })
+                    });
+
+                    const result = await updateResponse.json();
+                    if (result.success) {
+                        showAlert('Presupuesto actualizado');
+                        closeModal('modalEditarPresupuesto');
+                        location.reload();
+                    } else {
+                        showAlert(result.message, 'danger');
+                    }
+                } else {
+                    showAlert('No se encontró el presupuesto', 'danger');
+                }
+            } catch (error) {
+                showAlert('Error al actualizar presupuesto', 'danger');
+            }
+        });
+    }
+</script>
+{% endblock %}

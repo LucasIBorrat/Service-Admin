@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Agregar Servicio - ServiceAdmin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Nuevo Servicio</h1>
+    <p>Registro de un nuevo servicio de reparación</p>
+</div>
+
+<div class="card" style="max-width: 700px;">
+    <form id="formService">
+        <div class="form-group">
+            <label class="form-label" for="codCliente">Cliente *</label>
+            <select id="codCliente" name="codCliente" class="form-control" required>
+                <option value="">Seleccionar cliente...</option>
+                {% for cliente in clientes %}
+                <option value="{{ cliente.codCliente }}">{{ cliente.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+                <label class="form-label" for="nomProducto">Nombre del Producto *</label>
+                <input type="text" id="nomProducto" name="nomProducto" class="form-control"
+                    placeholder="Ej: Notebook, Impresora..." required>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="modelo">Modelo</label>
+                <input type="text" id="modelo" name="modelo" class="form-control" placeholder="Ej: HP Pavilion 15">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="descrip">Descripción del Producto</label>
+            <textarea id="descrip" name="descrip" class="form-control"
+                placeholder="Descripción general del producto..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="descripFalla">Descripción de la Falla *</label>
+            <textarea id="descripFalla" name="descripFalla" class="form-control" required
+                placeholder="Detalle del problema reportado por el cliente..."></textarea>
+        </div>
+
+        <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
+            <a href="{{ url_for('services_page') }}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Guardar Servicio</button>
+        </div>
+    </form>
+</div>
+
+{% if clientes|length == 0 %}
+<div class="alert alert-danger" style="max-width: 700px; margin-top: 1rem;">
+    ⚠️ No hay clientes registrados.
+    <a href="{{ url_for('clientes_page') }}" style="color: inherit; text-decoration: underline;">
+        Crear un cliente primero
+    </a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('formService').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const data = {
+            codCliente: parseInt(document.getElementById('codCliente').value),
+            nomProducto: document.getElementById('nomProducto').value,
+            modelo: document.getElementById('modelo').value,
+            descrip: document.getElementById('descrip').value,
+            descripFalla: document.getElementById('descripFalla').value
+        };
+
+        try {
+            const response = await fetch('/api/services', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showAlert(result.message);
+                window.location.href = '{{ url_for("services_page") }}';
+            } else {
+                showAlert(result.message, 'danger');
+            }
+        } catch (error) {
+            showAlert('Error al crear servicio', 'danger');
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - ServiceAdmin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Dashboard</h1>
+    <p>Resumen general del sistema</p>
+</div>
+
+<!-- Estadísticas principales -->
+<div class="grid-4" style="margin-bottom: 2rem;">
+    <div class="card stat-card">
+        <div class="stat-value">{{ estadisticas.total }}</div>
+        <div class="stat-label">Services Totales</div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-value">{{ estadisticas.pendientes }}</div>
+        <div class="stat-label">Pendientes de Revisión</div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-value">{{ estadisticas.reparados }}</div>
+        <div class="stat-label">Listos para Entregar</div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-value">{{ total_clientes }}</div>
+        <div class="stat-label">Clientes Registrados</div>
+    </div>
+</div>
+
+<div class="grid-3">
+    <!-- Acciones rápidas -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">⚡ Acciones Rápidas</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+            <a href="{{ url_for('agregar_service_page') }}" class="btn btn-primary">
+                ➕ Nuevo Servicio
+            </a>
+            <a href="{{ url_for('services_page') }}?estado=pendiente" class="btn btn-warning">
+                🔍 Ver Pendientes
+            </a>
+            <a href="{{ url_for('services_page') }}?estado=reparado" class="btn btn-success">
+                ✅ Ver Listos para Entrega
+            </a>
+            <a href="{{ url_for('clientes_page') }}" class="btn btn-secondary">
+                👥 Gestionar Clientes
+            </a>
+        </div>
+    </div>
+
+    <!-- Ganancias -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">💰 Ganancias</span>
+        </div>
+        <p style="color: var(--gray-300); margin-bottom: 1rem;">
+            Accedé al reporte mensual de ganancias para ver el detalle de repuestos,
+            mano de obra y totales por cada service.
+        </p>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <span>Services Totales:</span>
+            <span class="badge badge-info">{{ estadisticas.total }}</span>
+        </div>
+        <a href="{{ url_for('ganancias_page') }}" class="btn btn-primary btn-sm">
+            📊 Ver Reporte de Ganancias →
+        </a>
+    </div>
+
+    <!-- Estado de servicios -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">📊 Estado de Services</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span>Pendientes</span>
+                <span class="badge badge-secondary">{{ estadisticas.pendientes }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span>Revisados</span>
+                <span class="badge badge-warning">{{ estadisticas.revisados }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span>Reparados</span>
+                <span class="badge badge-info">{{ estadisticas.reparados }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span>Entregados</span>
+                <span class="badge badge-success">{{ estadisticas.entregados }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

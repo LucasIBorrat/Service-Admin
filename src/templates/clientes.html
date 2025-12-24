@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Clientes - ServiceAdmin{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1>Clientes</h1>
+        <p>Gestión de clientes registrados</p>
+    </div>
+    <button class="btn btn-primary" onclick="openModal('modalCliente')">
+        ➕ Nuevo Cliente
+    </button>
+</div>
+
+<div class="card">
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Nombre</th>
+                    <th>Teléfono</th>
+                    <th>Email</th>
+                    <th>Servicios</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="clientesTable">
+                {% for cliente in clientes %}
+                <tr data-id="{{ cliente.codCliente }}">
+                    <td>#{{ cliente.codCliente }}</td>
+                    <td>{{ cliente.nombre }}</td>
+                    <td>{{ cliente.tel or '-' }}</td>
+                    <td>{{ cliente.email or '-' }}</td>
+                    <td>
+                        <span class="badge badge-info">{{ cliente.total_services }} total</span>
+                        {% if cliente.services_pendientes > 0 %}
+                        <span class="badge badge-warning">{{ cliente.services_pendientes }} pendiente(s)</span>
+                        {% endif %}
+                    </td>
+                    <td class="actions">
+                        <button class="btn btn-secondary btn-sm" onclick="editarCliente({{ cliente.codCliente }})">
+                            ✏️ Editar
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="eliminarCliente({{ cliente.codCliente }})">
+                            🗑️
+                        </button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="empty-state">
+                        <div class="empty-state-icon">👥</div>
+                        <p>No hay clientes registrados</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal para crear/editar cliente -->
+<div id="modalCliente" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title" id="modalClienteTitle">Nuevo Cliente</h3>
+            <button class="modal-close" onclick="closeModal('modalCliente')">&times;</button>
+        </div>
+        <form id="formCliente">
+            <input type="hidden" id="clienteId">
+            <div class="form-group">
+                <label class="form-label" for="nombre">Nombre *</label>
+                <input type="text" id="nombre" name="nombre" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="direccion">Dirección</label>
+                <input type="text" id="direccion" name="direccion" class="form-control">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="tel">Teléfono</label>
+                <input type="text" id="tel" name="tel" class="form-control">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="email">Email</label>
+                <input type="email" id="email" name="email" class="form-control">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('modalCliente')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let editando = false;
+
+    document.getElementById('formCliente').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const data = {
+            nombre: document.getElementById('nombre').value,
+            direccion: document.getElementById('direccion').value,
+            tel: document.getElementById('tel').value,
+            email: document.getElementById('email').value
+        };
+
+        const clienteId = document.getElementById('clienteId').value;
+        const url = clienteId ? `/api/clientes/${clienteId}` : '/api/clientes';
+        const method = clienteId ? 'PUT' : 'POST';
+
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showAlert(result.message);
+                closeModal('modalCliente');
+                location.reload();
+            } else {
+                showAlert(result.message, 'danger');
+            }
+        } catch (error) {
+            showAlert('Error al guardar cliente', 'danger');
+        }
+    });
+
+    async function editarCliente(id) {
+        try {
+            const response = await fetch(`/api/clientes/${id}`);
+            const result = await response.json();
+
+            if (result.success) {
+                const cliente = result.data;
+                document.getElementById('clienteId').value = cliente.codCliente;
+                document.getElementById('nombre').value = cliente.nombre;
+                document.getElementById('direccion').value = cliente.direccion || '';
+                document.getElementById('tel').value = cliente.tel || '';
+                document.getElementById('email').value = cliente.email || '';
+                document.getElementById('modalClienteTitle').textContent = 'Editar Cliente';
+                openModal('modalCliente');
+            }
+        } catch (error) {
+            showAlert('Error al cargar cliente', 'danger');
+        }
+    }
+
+    async function eliminarCliente(id) {
+        if (!confirm('¿Está seguro de eliminar este cliente?')) return;
+
+        try {
+            const response = await fetch(`/api/clientes/${id}`, {
+                method: 'DELETE'
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showAlert(result.message);
+                document.querySelector(`tr[data-id="${id}"]`).remove();
+            } else {
+                showAlert(result.message, 'danger');
+            }
+        } catch (error) {
+            showAlert('Error al eliminar cliente', 'danger');
+        }
+    }
+
+    // Reset form al abrir modal nuevo
+    document.querySelector('[onclick="openModal(\'modalCliente\')"]').addEventListener('click', () => {
+        document.getElementById('formCliente').reset();
+        document.getElementById('clienteId').value = '';
+        document.getElementById('modalClienteTitle').textContent = 'Nuevo Cliente';
+    });
+</script>
+{% endblock %}

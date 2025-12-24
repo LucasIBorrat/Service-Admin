@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}Ganancias - ServiceAdmin{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1>💰 Reporte de Ganancias</h1>
+        <p>Resumen de ingresos por services</p>
+    </div>
+    <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <button class="btn btn-secondary btn-sm" onclick="cambiarMes(-1)">◀</button>
+        <span class="badge badge-info" style="font-size: 1rem; padding: 0.75rem 1rem;" id="mesActual">
+            {{ mes_nombre }} {{ anio }}
+        </span>
+        <button class="btn btn-secondary btn-sm" onclick="cambiarMes(1)">▶</button>
+    </div>
+</div>
+
+<!-- Resumen del mes -->
+<div class="grid-4" style="margin-bottom: 2rem;">
+    <div class="card stat-card">
+        <div class="stat-value">{{ services|length }}</div>
+        <div class="stat-label">Services del Mes</div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-value" style="color: var(--info);">${{ total_repuestos }}</div>
+        <div class="stat-label">Total Repuestos</div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-value" style="color: var(--warning);">${{ total_mano_obra }}</div>
+        <div class="stat-label">Total Mano de Obra</div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-value" style="color: var(--success);">${{ total_general }}</div>
+        <div class="stat-label">Total del Mes</div>
+    </div>
+</div>
+
+<!-- Lista de services del mes -->
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">📋 Detalle por Service</span>
+    </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Cliente</th>
+                    <th>Producto</th>
+                    <th>Fecha</th>
+                    <th>Estado</th>
+                    <th style="text-align: right;">Repuestos</th>
+                    <th style="text-align: right;">Mano de Obra</th>
+                    <th style="text-align: right;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for service in services %}
+                <tr>
+                    <td>#{{ service.codService }}</td>
+                    <td>{{ service.cliente.nombre }}</td>
+                    <td>{{ service.nomProducto }}</td>
+                    <td>{{ service.fecha.strftime('%d/%m/%Y') }}</td>
+                    <td>
+                        <span class="badge {{ service.estado_badge_class }}">{{ service.estado }}</span>
+                    </td>
+                    <td style="text-align: right;">
+                        {% if service.presupuesto %}
+                        ${{ service.total_costo_repuestos }}
+                        {% else %}
+                        <span style="color: var(--gray-500);">-</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: right;">
+                        {% if service.presupuesto %}
+                        ${{ service.presupuesto.manoDeObra }}
+                        {% else %}
+                        <span style="color: var(--gray-500);">-</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: right; font-weight: 600;">
+                        {% if service.presupuesto %}
+                        <span style="color: var(--success);">
+                            ${{ service.total_costo_repuestos + service.presupuesto.manoDeObra }}
+                        </span>
+                        {% else %}
+                        <span style="color: var(--gray-500);">Sin presupuesto</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="empty-state">
+                        <div class="empty-state-icon">📊</div>
+                        <p>No hay services para este mes</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            {% if services|length > 0 %}
+            <tfoot style="background: rgba(255,255,255,0.05); font-weight: 600;">
+                <tr>
+                    <td colspan="5" style="text-align: right;">TOTALES:</td>
+                    <td style="text-align: right; color: var(--info);">${{ total_repuestos }}</td>
+                    <td style="text-align: right; color: var(--warning);">${{ total_mano_obra }}</td>
+                    <td style="text-align: right; color: var(--success); font-size: 1.1rem;">${{ total_general }}</td>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>
+
+<!-- Solo presupuestos aceptados -->
+<div class="card" style="margin-top: 1.5rem;">
+    <div class="card-header">
+        <span class="card-title">✅ Solo Presupuestos Aceptados</span>
+    </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Cliente</th>
+                    <th>Producto</th>
+                    <th style="text-align: right;">Repuestos</th>
+                    <th style="text-align: right;">Mano de Obra</th>
+                    <th style="text-align: right;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set ns = namespace(rep_aceptados=0, mo_aceptados=0) %}
+                {% for service in services %}
+                {% if service.presupuesto and service.presupuesto.aceptado %}
+                {% set ns.rep_aceptados = ns.rep_aceptados + service.total_costo_repuestos %}
+                {% set ns.mo_aceptados = ns.mo_aceptados + service.presupuesto.manoDeObra %}
+                <tr>
+                    <td>#{{ service.codService }}</td>
+                    <td>{{ service.cliente.nombre }}</td>
+                    <td>{{ service.nomProducto }}</td>
+                    <td style="text-align: right;">${{ service.total_costo_repuestos }}</td>
+                    <td style="text-align: right;">${{ service.presupuesto.manoDeObra }}</td>
+                    <td style="text-align: right; font-weight: 600; color: var(--success);">
+                        ${{ service.total_costo_repuestos + service.presupuesto.manoDeObra }}
+                    </td>
+                </tr>
+                {% endif %}
+                {% else %}
+                <tr>
+                    <td colspan="6" class="empty-state">
+                        <p>No hay presupuestos aceptados este mes</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot style="background: rgba(16, 185, 129, 0.1); font-weight: 600;">
+                <tr>
+                    <td colspan="3" style="text-align: right;">GANANCIAS CONFIRMADAS:</td>
+                    <td style="text-align: right; color: var(--info);">${{ ns.rep_aceptados }}</td>
+                    <td style="text-align: right; color: var(--warning);">${{ ns.mo_aceptados }}</td>
+                    <td style="text-align: right; color: var(--success); font-size: 1.1rem;">
+                        ${{ ns.rep_aceptados + ns.mo_aceptados }}
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const mesActual = {{ mes }};
+    const anioActual = {{ anio }};
+
+    function cambiarMes(delta) {
+        let nuevoMes = mesActual + delta;
+        let nuevoAnio = anioActual;
+
+        if (nuevoMes > 12) {
+            nuevoMes = 1;
+            nuevoAnio++;
+        } else if (nuevoMes < 1) {
+            nuevoMes = 12;
+            nuevoAnio--;
+        }
+
+        window.location.href = `/ganancias?mes=${nuevoMes}&anio=${nuevoAnio}`;
+    }
+</script>
+{% endblock %}
