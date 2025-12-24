@@ -18,6 +18,7 @@ class Cliente(db.Model):
     direccion: Mapped[str] = mapped_column(String(50), nullable=True)
     tel: Mapped[str] = mapped_column(String(15), nullable=True)
     email: Mapped[str] = mapped_column(String(50), nullable=True)
+    descripcion: Mapped[str] = mapped_column(String(255), nullable=True)
     
     # Relaciones
     services: Mapped[List["Service"]] = relationship(
@@ -27,7 +28,7 @@ class Cliente(db.Model):
     )
     
     def __init__(self, nombre: str, direccion: str = None, 
-                 tel: str = None, email: str = None, codCliente: int = None):
+                 tel: str = None, email: str = None, descripcion: str = None, codCliente: int = None):
         """
         Inicializa un nuevo Cliente.
         
@@ -44,6 +45,7 @@ class Cliente(db.Model):
         self.direccion = direccion
         self.tel = tel
         self.email = email
+        self.descripcion = descripcion
     
     @property
     def total_services(self) -> int:
@@ -63,6 +65,7 @@ class Cliente(db.Model):
             'direccion': self.direccion,
             'tel': self.tel,
             'email': self.email,
+            'descripcion': self.descripcion,
             'total_services': self.total_services,
             'services_pendientes': self.services_pendientes
         }
