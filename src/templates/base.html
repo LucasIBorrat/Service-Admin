@@ -451,7 +451,8 @@
                 <li><a href="{{ url_for('index') }}" class="{% if request.endpoint == 'index' %}active{% endif %}">🏠
                         Inicio</a></li>
                 <li><a href="{{ url_for('services_page') }}"
-                        class="{% if 'service' in request.endpoint %}active{% endif %}">🔧 Services</a></li>
+                        class="{% if request.endpoint and 'service' in request.endpoint %}active{% endif %}">🔧
+                        Services</a></li>
                 <li><a href="{{ url_for('clientes_page') }}"
                         class="{% if request.endpoint == 'clientes_page' %}active{% endif %}">👥 Clientes</a></li>
                 <li><a href="{{ url_for('ganancias_page') }}"
