@@ -113,61 +113,97 @@
     </div>
 </div>
 
-<!-- Solo presupuestos aceptados -->
+<!-- Separación por Cliente -->
+{% set clientes_dict = {} %}
+{% for service in services %}
+    {% if service.cliente.nombre not in clientes_dict %}
+        {% set _ = clientes_dict.update({service.cliente.nombre: []}) %}
+    {% endif %}
+    {% set _ = clientes_dict[service.cliente.nombre].append(service) %}
+{% endfor %}
+
+{% for cliente_nombre, cliente_services in clientes_dict.items() %}
 <div class="card" style="margin-top: 1.5rem;">
     <div class="card-header">
-        <span class="card-title">✅ Solo Presupuestos Aceptados</span>
+        <span class="card-title">👤 {{ cliente_nombre }}</span>
     </div>
     <div class="table-container">
         <table>
             <thead>
                 <tr>
                     <th>Código</th>
-                    <th>Cliente</th>
                     <th>Producto</th>
+                    <th>Fecha</th>
+                    <th>Estado</th>
                     <th style="text-align: right;">Repuestos</th>
                     <th style="text-align: right;">Mano de Obra</th>
                     <th style="text-align: right;">Total</th>
                 </tr>
             </thead>
             <tbody>
-                {% set ns = namespace(rep_aceptados=0, mo_aceptados=0) %}
-                {% for service in services %}
-                {% if service.presupuesto and service.presupuesto.aceptado %}
-                {% set ns.rep_aceptados = ns.rep_aceptados + service.total_costo_repuestos %}
-                {% set ns.mo_aceptados = ns.mo_aceptados + service.presupuesto.manoDeObra %}
+                {% set ns = namespace(rep_cliente=0, mo_cliente=0) %}
+                {% for service in cliente_services %}
+                {% if service.presupuesto %}
+                    {% set ns.rep_cliente = ns.rep_cliente + service.total_costo_repuestos %}
+                    {% set ns.mo_cliente = ns.mo_cliente + service.presupuesto.manoDeObra %}
+                {% endif %}
                 <tr>
                     <td>#{{ service.codService }}</td>
-                    <td>{{ service.cliente.nombre }}</td>
                     <td>{{ service.nomProducto }}</td>
-                    <td style="text-align: right;">${{ service.total_costo_repuestos }}</td>
-                    <td style="text-align: right;">${{ service.presupuesto.manoDeObra }}</td>
-                    <td style="text-align: right; font-weight: 600; color: var(--success);">
-                        ${{ service.total_costo_repuestos + service.presupuesto.manoDeObra }}
+                    <td>{{ service.fecha.strftime('%d/%m/%Y') }}</td>
+                    <td>
+                        <span class="badge {{ service.estado_badge_class }}">{{ service.estado }}</span>
                     </td>
-                </tr>
-                {% endif %}
-                {% else %}
-                <tr>
-                    <td colspan="6" class="empty-state">
-                        <p>No hay presupuestos aceptados este mes</p>
+                    <td style="text-align: right;">
+                        {% if service.presupuesto %}
+                        ${{ service.total_costo_repuestos }}
+                        {% else %}
+                        <span style="color: var(--gray-500);">-</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: right;">
+                        {% if service.presupuesto %}
+                        ${{ service.presupuesto.manoDeObra }}
+                        {% else %}
+                        <span style="color: var(--gray-500);">-</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: right; font-weight: 600;">
+                        {% if service.presupuesto %}
+                        <span style="color: var(--success);">
+                            ${{ service.total_costo_repuestos + service.presupuesto.manoDeObra }}
+                        </span>
+                        {% else %}
+                        <span style="color: var(--gray-500);">Sin presupuesto</span>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
             <tfoot style="background: rgba(16, 185, 129, 0.1); font-weight: 600;">
                 <tr>
-                    <td colspan="3" style="text-align: right;">GANANCIAS CONFIRMADAS:</td>
-                    <td style="text-align: right; color: var(--info);">${{ ns.rep_aceptados }}</td>
-                    <td style="text-align: right; color: var(--warning);">${{ ns.mo_aceptados }}</td>
+                    <td colspan="4" style="text-align: right;">SUBTOTAL {{ cliente_nombre }}:</td>
+                    <td style="text-align: right; color: var(--info);">${{ ns.rep_cliente }}</td>
+                    <td style="text-align: right; color: var(--warning);">${{ ns.mo_cliente }}</td>
                     <td style="text-align: right; color: var(--success); font-size: 1.1rem;">
-                        ${{ ns.rep_aceptados + ns.mo_aceptados }}
+                        ${{ ns.rep_cliente + ns.mo_cliente }}
                     </td>
                 </tr>
             </tfoot>
         </table>
     </div>
 </div>
+{% else %}
+<div class="card" style="margin-top: 1.5rem;">
+    <div class="card-header">
+        <span class="card-title">👤 Separación por Cliente</span>
+    </div>
+    <div class="empty-state" style="padding: 2rem;">
+        <div class="empty-state-icon">📊</div>
+        <p>No hay services para mostrar por cliente este mes</p>
+    </div>
+</div>
+{% endfor %}
 {% endblock %}
 
 {% block extra_js %}
