@@ -19,11 +19,25 @@ def run_migrations(app):
     """Ejecuta migraciones necesarias para mantener el schema actualizado"""
     with app.app_context():
         try:
-            # Verificar si la columna descripcion existe en clientes
-            result = db.session.execute(
-                text("PRAGMA table_info(clientes)")
-            ).fetchall()
-            columns = [row[1] for row in result]
+            # Detectar tipo de base de datos
+            dialect = db.engine.dialect.name
+            
+            if dialect == 'sqlite':
+                # SQLite: usar PRAGMA
+                result = db.session.execute(
+                    text("PRAGMA table_info(clientes)")
+                ).fetchall()
+                columns = [row[1] for row in result]
+            else:
+                # PostgreSQL: usar information_schema
+                result = db.session.execute(
+                    text("""
+                        SELECT column_name 
+                        FROM information_schema.columns 
+                        WHERE table_name = 'clientes'
+                    """)
+                ).fetchall()
+                columns = [row[0] for row in result]
             
             if 'descripcion' not in columns:
                 logger.info("Agregando columna 'descripcion' a tabla 'clientes'...")
